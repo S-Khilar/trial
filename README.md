@@ -49,10 +49,15 @@ GNNs work by passing information between nodes to learn structural relationships
 ## 📈 Results
 (*Update after training*)
 
-- RMSE: -- 1.424
-- MAE: -- 1.126
-- R² Score: -- 0.458
-- PR–AUC: -- 0.765
+- RMSE:  1.424
+- MAE:  1.126
+- R² Score:  0.458
+- PR–AUC:  0.765
+- Regression Accuracy (%):  45.782681979346826
+- pKd Classification Accuracy:  0.7470238095238095
+- Precision:  0.7553816046966731
+- Recall:  0.5298558682223747
+- F1-score:  0.6228317870108915
 
 ---
 
