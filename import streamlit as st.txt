@@ -1,0 +1,205 @@
+import streamlit as st
+import torch
+import tempfile
+
+from model import ProteinLigandGNN
+from graph_utils import protein_to_graph, mol_to_graph
+
+
+# ------------------------
+# Streamlit page config
+# ------------------------
+st.set_page_config(page_title="Protein–Ligand GNN Predictor")
+st.title("🔬 Protein–Ligand Binding Affinity Predictor")
+
+device = torch.device("cpu")
+
+@st.cache_resource
+def load_model():
+    model = ProteinLigandGNN(hidden_dim=128)
+    model.load_state_dict(torch.load("model_weights.pth", map_location=device))
+    model.eval()
+    return model
+
+model = load_model()
+
+# ------------------------
+# User Inputs
+# ------------------------
+smiles = st.text_input("Enter ligand SMILES")
+
+pdb_file = st.file_uploader("Upload protein PDB file", type=["pdb"])
+
+# ------------------------
+# Prediction
+# ------------------------
+if st.button("Predict"):
+
+    if smiles == "" or pdb_file is None:
+        st.warning("Please provide both SMILES and PDB file")
+    else:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(pdb_file.read())
+            pdb_path = tmp.name
+
+        protein_graph = protein_to_graph(pdb_path)
+        ligand_graph = mol_to_graph(smiles)
+
+        protein_graph.batch = torch.zeros(
+            protein_graph.num_nodes, dtype=torch.long
+        )
+        ligand_graph.batch = torch.zeros(
+            ligand_graph.num_nodes, dtype=torch.long
+        )
+
+        with torch.no_grad():
+            pkd, pki, ba = model(protein_graph, ligand_graph)
+
+        st.success("Prediction completed ✅")
+        st.metric("pKd", pkd.item())
+        #st.metric("“Model predicts binding affinity as pK (−log₁₀(Kd/Ki)) based on PDBbind refined dataset”")
+        st.metric("pKi", pki.item())
+        st.metric("Binding Affinity", ba.item())
+
+
+
+
+
+import streamlit as st
+import torch
+import tempfile
+import requests
+import os
+import matplotlib.pyplot as plt
+
+from model import ProteinLigandGNN
+from graph_utils import protein_to_graph, mol_to_graph
+
+
+# ------------------------
+# Page Config
+# ------------------------
+st.set_page_config(
+    page_title="Protein–Ligand GNN Predictor",
+    page_icon="🔬",
+    layout="centered"
+)
+
+st.title("🔬 Protein–Ligand Binding Affinity Predictor")
+st.markdown("Predict **pKd, pKi and Binding Affinity** using a Graph Neural Network model.")
+
+device = torch.device("cpu")
+
+
+# ------------------------
+# Load Model
+# ------------------------
+@st.cache_resource
+def load_model():
+    model = ProteinLigandGNN(hidden_dim=128)
+    model.load_state_dict(torch.load("model_weights.pth", map_location=device))
+    model.eval()
+    return model
+
+model = load_model()
+
+
+# ------------------------
+# User Inputs Section
+# ------------------------
+st.subheader("Ligand Input")
+smiles = st.text_input("Enter Ligand SMILES")
+
+st.subheader("Protein Input")
+
+input_method = st.radio(
+    "Choose Protein Input Method:",
+    ["Upload PDB File", "Enter PDB ID"]
+)
+
+pdb_file = None
+pdb_id = None
+
+if input_method == "Upload PDB File":
+    pdb_file = st.file_uploader("Upload Protein PDB File", type=["pdb"])
+
+else:
+    pdb_id = st.text_input("Enter PDB ID (e.g., 1HSG)")
+    
+
+# ------------------------
+# Prediction
+# ------------------------
+if st.button("Predict"):
+
+    if smiles == "":
+        st.warning("Please enter SMILES string")
+        st.stop()
+
+    try:
+
+        # ------------------------
+        # Handle Protein Input
+        # ------------------------
+        if input_method == "Upload PDB File":
+
+            if pdb_file is None:
+                st.warning("Please upload PDB file")
+                st.stop()
+
+            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                tmp.write(pdb_file.read())
+                pdb_path = tmp.name
+
+        else:
+            if pdb_id == "":
+                st.warning("Please enter PDB ID")
+                st.stop()
+
+            pdb_id = pdb_id.upper()
+
+            url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
+            response = requests.get(url)
+
+            if response.status_code != 200:
+                st.error("Invalid PDB ID ")
+                st.stop()
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdb") as tmp:
+                tmp.write(response.content)
+                pdb_path = tmp.name
+
+            st.success(f"PDB {pdb_id} downloaded successfully ")
+
+        # ------------------------
+        # Convert to Graphs
+        # ------------------------
+        protein_graph = protein_to_graph(pdb_path)
+        ligand_graph = mol_to_graph(smiles)
+
+        protein_graph.batch = torch.zeros(
+            protein_graph.num_nodes, dtype=torch.long
+        )
+        ligand_graph.batch = torch.zeros(
+            ligand_graph.num_nodes, dtype=torch.long
+        )
+        
+
+        # ------------------------
+        # Model Prediction
+        # ------------------------
+        with torch.no_grad():
+            pkd, pki, ba = model(protein_graph, ligand_graph)
+
+        st.success("Prediction completed successfully")
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("pKd", f"{pkd.item():.3f}")
+        col2.metric("pKi", f"{pki.item():.3f}")
+        col3.metric("Binding Affinity", f"{ba.item():.3f}")
+
+    except Exception as e:
+        st.error(f"Error occurred: {str(e)}")
+
+
