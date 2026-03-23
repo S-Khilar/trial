@@ -101,7 +101,7 @@ Interested in AI for Drug Discovery
 ---
 
 ## Plots
-<img width="480" height="430" align="left" alt="Binding Afinity" src="https://github.com/user-attachments/assets/5ad28a8d-c4e0-48ee-b8ea-46745bb579c5" />
+<img width="450" height="420" align="left" alt="Binding Afinity" src="https://github.com/user-attachments/assets/5ad28a8d-c4e0-48ee-b8ea-46745bb579c5" />
 
-<img width="480" height="430" align="right" alt="ROC Curve" src="https://github.com/user-attachments/assets/13db8b61-d5d6-4478-be1f-f2bd0201f4ab" />
+<img width="450" height="420" align="left" alt="ROC Curve" src="https://github.com/user-attachments/assets/13db8b61-d5d6-4478-be1f-f2bd0201f4ab" />
 
